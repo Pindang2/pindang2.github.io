@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대구법원청사 데이터베이스 조회 시스템</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .search-box button {
+            padding: 15px 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .search-box button:hover {
+            background: #5568d3;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 16px;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .result-section {
+            display: none;
+        }
+
+        .result-section.active {
+            display: block;
+        }
+
+        .card {
+            background: #f8f9fa;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .card h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .card .info {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #667eea;
+            color: white;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-right: 8px;
+            margin-top: 8px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-card .number {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏛️ 대구법원청사 데이터베이스 조회</h1>
+            <p>대구가정법원 · 대구지방법원 서부지원</p>
+        </div>
+
+        <div class="content">
+            <div id="loading" class="loading">
+                데이터베이스를 로드하는 중입니다...
+            </div>
+
+            <div id="error" class="error" style="display:none;"></div>
+
+            <div id="main" style="display:none;">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="부서명 또는 업무명을 입력하세요 (예: 민사, 이혼, 등기)">
+                    <button onclick="performSearch()">🔍 검색</button>
+                </div>
+
+                <div class="tabs">
+                    <button class="tab active" onclick="showTab('overview')">📊 전체 현황</button>
+                    <button class="tab" onclick="showTab('departments')">🏢 부서 목록</button>
+                    <button class="tab" onclick="showTab('floors')">🔼 층별 안내</button>
+                    <button class="tab" onclick="showTab('search')">🔍 검색 결과</button>
+                </div>
+
+                <div id="overview" class="result-section active">
+                    <div class="stats-grid" id="statsGrid"></div>
+                    <h2 style="margin-top:20px; margin-bottom:15px;">📈 업무 분류별 통계</h2>
+                    <div id="categoryStats"></div>
+                </div>
+
+                <div id="departments" class="result-section">
+                    <h2 style="margin-bottom:15px;">🏢 전체 부서 목록</h2>
+                    <div id="departmentList"></div>
+                </div>
+
+                <div id="floors" class="result-section">
+                    <h2 style="margin-bottom:15px;">🔼 층별 부서 안내</h2>
+                    <div id="floorList"></div>
+                </div>
+
+                <div id="search" class="result-section">
+                    <h2 style="margin-bottom:15px;">🔍 검색 결과</h2>
+                    <div id="searchResults"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+    <script src="court-database-handler.js"></script>
+    <script>
+        let courtDB;
+
+        async function init() {
+            try {
+                courtDB = new CourtDatabaseHandler();
+                const success = await courtDB.initialize('대구법원청사관리시스템_v2.db');
+
+                if (success) {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('main').style.display = 'block';
+                    loadOverview();
+                    loadDepartments();
+                    loadFloors();
+                } else {
+                    showError('데이터베이스 초기화에 실패했습니다.');
+                }
+            } catch (error) {
+                showError('오류 발생: ' + error.message);
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function showTab(tabName) {
+            // 탭 버튼 활성화
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // 섹션 표시
+            document.querySelectorAll('.result-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        function loadOverview() {
+            const buildingInfo = courtDB.getBuildingInfo();
+            const deptStats = courtDB.getDepartmentStatsByCourt();
+            const categoryStats = courtDB.getServiceStatsByCategory();
+
+            // 통계 카드
+            const statsHTML = `
+                <div class="stat-card">
+                    <div class="number">35</div>
+                    <div class="label">총 부서</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number">257</div>
+                    <div class="label">총 업무</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number">8</div>
+                    <div class="label">층 수</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number">10</div>
+                    <div class="label">업무 분류</div>
+                </div>
+            `;
+            document.getElementById('statsGrid').innerHTML = statsHTML;
+
+            // 분류별 통계
+            let categoryHTML = '';
+            categoryStats.forEach(cat => {
+                categoryHTML += `
+                    <div class="card">
+                        <h3>${cat.category_name}</h3>
+                        <div class="info">${cat.category_desc}</div>
+                        <span class="badge">업무 ${cat.service_count}개</span>
+                    </div>
+                `;
+            });
+            document.getElementById('categoryStats').innerHTML = categoryHTML;
+        }
+
+        function loadDepartments() {
+            const departments = courtDB.getAllDepartments();
+            let html = '';
+
+            departments.forEach(dept => {
+                html += `
+                    <div class="card">
+                        <h3>${dept.dept_detail}</h3>
+                        <div class="info">📍 위치: ${dept.floor_numbers}층 ${dept.room_numbers}</div>
+                        <div class="info">🏛️ 소속: ${dept.court_affiliation}</div>
+                        <span class="badge">${dept.dept_type}</span>
+                        <button onclick="showDeptServices(${dept.dept_id})" 
+                                style="margin-top:10px; padding:8px 16px; background:#667eea; 
+                                       color:white; border:none; border-radius:5px; cursor:pointer;">
+                            업무 보기
+                        </button>
+                    </div>
+                `;
+            });
+
+            document.getElementById('departmentList').innerHTML = html;
+        }
+
+        function loadFloors() {
+            const floors = courtDB.getAllFloors();
+            let html = '';
+
+            floors.forEach(floor => {
+                html += `
+                    <div class="card">
+                        <h3>${floor.floor_number}층</h3>
+                        <div class="info">${floor.departments_summary}</div>
+                        <span class="badge">${floor.floor_type}</span>
+                    </div>
+                `;
+            });
+
+            document.getElementById('floorList').innerHTML = html;
+        }
+
+        function performSearch() {
+            const keyword = document.getElementById('searchInput').value.trim();
+            if (!keyword) {
+                alert('검색어를 입력해주세요.');
+                return;
+            }
+
+            const results = courtDB.comprehensiveSearch(keyword);
+            let html = '';
+
+            if (results.departments.length > 0) {
+                html += '<h3 style="margin-bottom:15px;">🏢 부서 검색 결과</h3>';
+                results.departments.forEach(dept => {
+                    html += `
+                        <div class="card">
+                            <h3>${dept.dept_detail}</h3>
+                            <div class="info">📍 ${dept.floor_numbers}층 ${dept.room_numbers}</div>
+                        </div>
+                    `;
+                });
+            }
+
+            if (results.services.length > 0) {
+                html += '<h3 style="margin-top:30px; margin-bottom:15px;">📋 업무 검색 결과</h3>';
+                results.services.forEach(service => {
+                    html += `
+                        <div class="card">
+                            <h3>${service.service_name}</h3>
+                            <div class="info">🏢 담당: ${service.dept_detail}</div>
+                            <div class="info">📍 위치: ${service.floor_numbers}층 ${service.room_numbers}</div>
+                            <div class="info">📄 필요서류: ${service.required_documents}</div>
+                            <div class="info">⏱️ 처리시간: ${service.processing_time}</div>
+                            <div class="info">💰 수수료: ${service.service_fee}</div>
+                        </div>
+                    `;
+                });
+            }
+
+            if (results.departments.length === 0 && results.services.length === 0) {
+                html = '<div class="card">검색 결과가 없습니다.</div>';
+            }
+
+            document.getElementById('searchResults').innerHTML = html;
+            showTab('search');
+        }
+
+        function showDeptServices(deptId) {
+            const services = courtDB.getServicesByDepartment(deptId);
+            let html = '<h3 style="margin-bottom:15px;">📋 부서 업무 목록</h3>';
+
+            services.forEach(service => {
+                html += `
+                    <div class="card">
+                        <h3>${service.service_name}</h3>
+                        <div class="info">📄 필요서류: ${service.required_documents}</div>
+                        <div class="info">⏱️ 처리시간: ${service.processing_time}</div>
+                        <div class="info">💰 수수료: ${service.service_fee}</div>
+                        <span class="badge">${service.category_name}</span>
+                    </div>
+                `;
+            });
+
+            document.getElementById('searchResults').innerHTML = html;
+            showTab('search');
+        }
+
+        // 페이지 로드 시 초기화
+        window.addEventListener('load', init);
+
+        // 엔터키로 검색
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('searchInput')?.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') performSearch();
+            });
+        });
+    </script>
+</body>
+</html>

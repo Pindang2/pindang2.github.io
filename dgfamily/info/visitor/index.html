@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대구법원청사 안내시스템</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 { font-size: 2em; margin-bottom: 10px; }
+        .header p { opacity: 0.9; font-size: 1.1em; }
+        .search-section {
+            padding: 30px;
+            background: #f8f9fa;
+        }
+        .quick-search {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            min-height: 50px;
+        }
+        .quick-btn {
+            padding: 10px 20px;
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            font-size: 1em;
+        }
+        .quick-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+        }
+        .quick-btn.suggestion {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #764ba2;
+        }
+        .quick-btn.suggestion:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        }
+        .search-box {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        #searchInput {
+            width: 100%;
+            padding: 20px;
+            font-size: 1.3em;
+            border: 3px solid #667eea;
+            border-radius: 15px;
+            outline: none;
+            transition: all 0.3s;
+        }
+        #searchInput:focus { border-color: #764ba2; box-shadow: 0 0 20px rgba(102, 126, 234, 0.3); }
+        #suggestions {
+            display: none;
+        }
+        .keyboard {
+            background: white;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .keyboard-row {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+        .key {
+            min-width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .key:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .key:active { transform: translateY(0); }
+        .key.space { flex: 1; }
+        .key.special { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); min-width: 70px; }
+        .results-section {
+            padding: 30px;
+            display: none;
+        }
+        .result-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        .result-title {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        .result-info {
+            display: grid;
+            gap: 15px;
+        }
+        .info-row {
+            display: flex;
+            align-items: flex-start;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #764ba2;
+            min-width: 120px;
+            font-size: 1.1em;
+        }
+        .info-value {
+            color: #333;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+        .location-highlight {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 1.3em;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        #loading { text-align: center; padding: 50px; color: #667eea; font-size: 1.2em; }
+        #error { color: #f5576c; padding: 20px; text-align: center; font-weight: 600; }
+        
+        /* 팝업 모달 스타일 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 9998;
+            animation: fadeIn 0.3s;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 20px;
+            padding: 0;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 9999;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.3s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideUp {
+            from { transform: translate(-50%, -40%); opacity: 0; }
+            to { transform: translate(-50%, -50%); opacity: 1; }
+        }
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px 30px;
+            border-radius: 20px 20px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-title {
+            font-size: 1.5em;
+            font-weight: 700;
+        }
+        .modal-close {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 1.5em;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: rotate(90deg);
+        }
+        .modal-body {
+            padding: 30px;
+        }
+        .direction-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .direction-floor {
+            font-size: 3em;
+            font-weight: 900;
+            margin-bottom: 10px;
+        }
+        .direction-dept {
+            font-size: 1.5em;
+            font-weight: 600;
+            opacity: 0.95;
+        }
+        .direction-arrow {
+            font-size: 4em;
+            margin: 20px 0;
+            animation: bounce 2s infinite;
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-20px); }
+            60% { transform: translateY(-10px); }
+        }
+        .modal-info-grid {
+            display: grid;
+            gap: 15px;
+        }
+        .modal-info-item {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        .modal-info-label {
+            font-weight: 700;
+            color: #764ba2;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+        .modal-info-value {
+            color: #333;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+        .modal-btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .modal-btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .modal-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .modal-btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+        .modal-btn-secondary:hover {
+            background: #d0d0d0;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏛️ 대구법원청사 안내</h1>
+            <p>원하시는 업무나 부서를 검색해주세요</p>
+        </div>
+
+        <div id="loading">데이터베이스를 불러오는 중입니다...</div>
+        <div id="error"></div>
+
+        <div id="mainContent" style="display: none;">
+            <div class="search-section">
+                <div class="quick-search" id="quickSearch">
+                    <button class="quick-btn" onclick="quickSearch('등기')">등기</button>
+                    <button class="quick-btn" onclick="quickSearch('가사')">가사</button>
+                    <button class="quick-btn" onclick="quickSearch('민원')">민원</button>
+                    <button class="quick-btn" onclick="quickSearch('상담')">상담</button>
+                    <button class="quick-btn" onclick="quickSearch('조정')">조정</button>
+                </div>
+                
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="예: 등기, 가사, 민원접수..." autocomplete="off">
+                    <div id="suggestions"></div>
+                </div>
+                
+                <div class="keyboard">
+                    <div class="keyboard-row">
+                        <button class="key" data-key="ㅂ">ㅂ</button>
+                        <button class="key" data-key="ㅈ">ㅈ</button>
+                        <button class="key" data-key="ㄷ">ㄷ</button>
+                        <button class="key" data-key="ㄱ">ㄱ</button>
+                        <button class="key" data-key="ㅅ">ㅅ</button>
+                        <button class="key" data-key="ㅛ">ㅛ</button>
+                        <button class="key" data-key="ㅕ">ㅕ</button>
+                        <button class="key" data-key="ㅑ">ㅑ</button>
+                        <button class="key" data-key="ㅐ">ㅐ</button>
+                        <button class="key" data-key="ㅔ">ㅔ</button>
+                    </div>
+                    <div class="keyboard-row">
+                        <button class="key" data-key="ㅁ">ㅁ</button>
+                        <button class="key" data-key="ㄴ">ㄴ</button>
+                        <button class="key" data-key="ㅇ">ㅇ</button>
+                        <button class="key" data-key="ㄹ">ㄹ</button>
+                        <button class="key" data-key="ㅎ">ㅎ</button>
+                        <button class="key" data-key="ㅗ">ㅗ</button>
+                        <button class="key" data-key="ㅓ">ㅓ</button>
+                        <button class="key" data-key="ㅏ">ㅏ</button>
+                        <button class="key" data-key="ㅣ">ㅣ</button>
+                    </div>
+                    <div class="keyboard-row">
+                        <button class="key" data-key="ㅋ">ㅋ</button>
+                        <button class="key" data-key="ㅌ">ㅌ</button>
+                        <button class="key" data-key="ㅊ">ㅊ</button>
+                        <button class="key" data-key="ㅍ">ㅍ</button>
+                        <button class="key" data-key="ㅠ">ㅠ</button>
+                        <button class="key" data-key="ㅜ">ㅜ</button>
+                        <button class="key" data-key="ㅡ">ㅡ</button>
+                    </div>
+                    <div class="keyboard-row">
+                        <button class="key special" data-key="backspace">←</button>
+                        <button class="key space" data-key=" ">스페이스</button>
+                        <button class="key special" data-key="clear">지우기</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="results-section" id="results"></div>
+        </div>
+    </div>
+
+    <!-- 안내 팝업 모달 -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal()"></div>
+    <div class="modal" id="modal">
+        <div class="modal-header">
+            <div class="modal-title">📍 찾아가는 길</div>
+            <button class="modal-close" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <!-- 동적으로 채워짐 -->
+        </div>
+    </div>
+
+    <script>
+        let db;
+        let allData = [];
+
+        // 한글 조합 상수
+        const CHO = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+        const JUNG = ['ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ'];
+        const JONG = ['','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+        
+        // 복모음 조합 규칙
+        const JUNG_COMBINE = {
+            'ㅗㅏ': 'ㅘ', 'ㅗㅐ': 'ㅙ', 'ㅗㅣ': 'ㅚ',
+            'ㅜㅓ': 'ㅝ', 'ㅜㅔ': 'ㅞ', 'ㅜㅣ': 'ㅟ',
+            'ㅡㅣ': 'ㅢ'
+        };
+        
+        // 복받침 조합 규칙
+        const JONG_COMBINE = {
+            'ㄱㅅ': 'ㄳ', 'ㄴㅈ': 'ㄵ', 'ㄴㅎ': 'ㄶ',
+            'ㄹㄱ': 'ㄺ', 'ㄹㅁ': 'ㄻ', 'ㄹㅂ': 'ㄼ',
+            'ㄹㅅ': 'ㄽ', 'ㄹㅌ': 'ㄾ', 'ㄹㅍ': 'ㄿ',
+            'ㄹㅎ': 'ㅀ', 'ㅂㅅ': 'ㅄ'
+        };
+
+        class HangulAssembler {
+            constructor() {
+                this.chars = [];
+            }
+
+            addChar(char) {
+                const lastIdx = this.chars.length - 1;
+                
+                if (this.chars.length === 0) {
+                    this.chars.push({ cho: char, jung: '', jong: '' });
+                    return;
+                }
+
+                const last = this.chars[lastIdx];
+
+                // 초성 입력
+                if (CHO.includes(char)) {
+                    if (!last.cho) {
+                        last.cho = char;
+                    } else if (last.cho && !last.jung) {
+                        this.chars.push({ cho: char, jung: '', jong: '' });
+                    } else if (last.cho && last.jung && !last.jong) {
+                        // 받침으로 추가 가능한지 확인
+                        if (JONG.includes(char)) {
+                            last.jong = char;
+                        } else {
+                            this.chars.push({ cho: char, jung: '', jong: '' });
+                        }
+                    } else if (last.jong) {
+                        // 복받침 시도
+                        const combined = JONG_COMBINE[last.jong + char];
+                        if (combined) {
+                            last.jong = combined;
+                        } else {
+                            this.chars.push({ cho: char, jung: '', jong: '' });
+                        }
+                    }
+                }
+                // 중성 입력
+                else if (JUNG.includes(char)) {
+                    if (last.cho && !last.jung) {
+                        last.jung = char;
+                    } else if (last.cho && last.jung && !last.jong) {
+                        // 복모음 시도
+                        const combined = JUNG_COMBINE[last.jung + char];
+                        if (combined) {
+                            last.jung = combined;
+                        } else {
+                            this.chars.push({ cho: '', jung: char, jong: '' });
+                        }
+                    } else if (last.jong) {
+                        // 받침의 일부를 초성으로 분리
+                        const jongIdx = JONG.indexOf(last.jong);
+                        if (jongIdx > 1) { // 복받침인 경우
+                            const jongStr = last.jong;
+                            for (let key in JONG_COMBINE) {
+                                if (JONG_COMBINE[key] === jongStr) {
+                                    const [first, second] = key.split('');
+                                    last.jong = first;
+                                    this.chars.push({ cho: second, jung: char, jong: '' });
+                                    return;
+                                }
+                            }
+                        }
+                        // 받침을 초성으로
+                        const newCho = last.jong;
+                        last.jong = '';
+                        this.chars.push({ cho: newCho, jung: char, jong: '' });
+                    } else {
+                        this.chars.push({ cho: '', jung: char, jong: '' });
+                    }
+                }
+                // 종성 입력
+                else if (JONG.includes(char) && char !== '') {
+                    if (last.cho && last.jung && !last.jong) {
+                        last.jong = char;
+                    } else if (last.jong) {
+                        // 복받침 시도
+                        const combined = JONG_COMBINE[last.jong + char];
+                        if (combined) {
+                            last.jong = combined;
+                        }
+                    }
+                }
+                // 공백이나 기타 문자
+                else {
+                    this.chars.push({ cho: char, jung: '', jong: '' });
+                }
+            }
+
+            backspace() {
+                if (this.chars.length === 0) return;
+                
+                const lastIdx = this.chars.length - 1;
+                const last = this.chars[lastIdx];
+
+                if (last.jong) {
+                    // 복받침 분해
+                    for (let key in JONG_COMBINE) {
+                        if (JONG_COMBINE[key] === last.jong) {
+                            last.jong = key[0];
+                            return;
+                        }
+                    }
+                    last.jong = '';
+                } else if (last.jung) {
+                    // 복모음 분해
+                    for (let key in JUNG_COMBINE) {
+                        if (JUNG_COMBINE[key] === last.jung) {
+                            last.jung = key[0];
+                            return;
+                        }
+                    }
+                    last.jung = '';
+                } else if (last.cho) {
+                    last.cho = '';
+                } else {
+                    this.chars.pop();
+                }
+
+                // 빈 객체 제거
+                if (!last.cho && !last.jung && !last.jong) {
+                    this.chars.pop();
+                }
+            }
+
+            toString() {
+                return this.chars.map(ch => {
+                    if (!ch.cho && !ch.jung && !ch.jong) return '';
+                    if (!ch.jung) return ch.cho; // 자음만
+                    if (!ch.cho) return ch.jung; // 모음만
+                    
+                    const choIdx = CHO.indexOf(ch.cho);
+                    const jungIdx = JUNG.indexOf(ch.jung);
+                    const jongIdx = JONG.indexOf(ch.jong);
+                    
+                    if (choIdx === -1 || jungIdx === -1) return ch.cho || ch.jung || '';
+                    
+                    return String.fromCharCode(0xAC00 + (choIdx * 588) + (jungIdx * 28) + jongIdx);
+                }).join('');
+            }
+
+            clear() {
+                this.chars = [];
+            }
+        }
+
+        const assembler = new HangulAssembler();
+
+        // 데이터베이스 초기화
+        async function initDb() {
+            try {
+                const SQL = await initSqlJs({
+                    locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`
+                });
+
+                const response = await fetch('/dgfamily/info/database/대구법원청사관리시스템.db');
+                if (!response.ok) throw new Error('DB 파일 로드 실패');
+                
+                const buffer = await response.arrayBuffer();
+                db = new SQL.Database(new Uint8Array(buffer));
+
+                loadAllData();
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
+
+            } catch (err) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').textContent = `오류: ${err.message}`;
+            }
+        }
+
+        // 전체 데이터 로드
+        function loadAllData() {
+            const query = `
+                SELECT 
+                    s.service_name,
+                    s.required_documents,
+                    s.processing_time,
+                    s.service_fee,
+                    d.dept_name,
+                    d.floor_numbers,
+                    d.court_affiliation,
+                    sc.category_name
+                FROM services s
+                JOIN departments d ON s.dept_id = d.dept_id
+                JOIN service_categories sc ON s.category_id = sc.category_id
+            `;
+            
+            const result = db.exec(query);
+            if (result.length > 0) {
+                allData = result[0].values.map(row => ({
+                    service_name: row[0],
+                    required_documents: row[1],
+                    processing_time: row[2],
+                    service_fee: row[3],
+                    dept_name: row[4],
+                    floor_numbers: row[5],
+                    court_affiliation: row[6],
+                    category_name: row[7]
+                }));
+            }
+        }
+
+        // 검색어 매칭 (초성 검색 포함)
+        function searchData(keyword) {
+            if (!keyword) return [];
+            
+            const lower = keyword.toLowerCase();
+            const results = allData.filter(item => 
+                item.service_name.toLowerCase().includes(lower) ||
+                item.dept_name.toLowerCase().includes(lower) ||
+                item.category_name.toLowerCase().includes(lower) ||
+                matchChosung(item.service_name, keyword) ||
+                matchChosung(item.dept_name, keyword) ||
+                matchChosung(item.category_name, keyword)
+            ).slice(0, 8);
+            
+            console.log(`검색어 "${keyword}"에 대한 결과: ${results.length}개`);
+            return results;
+        }
+
+        // 초성 검색 매칭
+        function matchChosung(text, chosung) {
+            if (!text || !chosung) return false;
+            const textCho = text.split('').map(char => {
+                const code = char.charCodeAt(0);
+                if (code >= 0xAC00 && code <= 0xD7A3) {
+                    return CHO[Math.floor((code - 0xAC00) / 588)];
+                }
+                return char;
+            }).join('');
+            return textCho.includes(chosung);
+        }
+
+        // 추천 목록 표시 - quick-search 영역에 표시
+        function showSuggestions(results) {
+            const quickSearchDiv = document.getElementById('quickSearch');
+            
+            if (results.length === 0) {
+                // 기본 추천 버튼 복원
+                quickSearchDiv.innerHTML = `
+                    <button class="quick-btn" onclick="quickSearch('등기')">등기</button>
+                    <button class="quick-btn" onclick="quickSearch('가사')">가사</button>
+                    <button class="quick-btn" onclick="quickSearch('민원')">민원</button>
+                    <button class="quick-btn" onclick="quickSearch('상담')">상담</button>
+                    <button class="quick-btn" onclick="quickSearch('조정')">조정</button>
+                `;
+                return;
+            }
+
+            // 검색 결과를 버튼으로 표시
+            quickSearchDiv.innerHTML = results.map((item, idx) => `
+                <button class="quick-btn suggestion" data-index="${idx}">
+                    ${item.service_name}
+                </button>
+            `).join('');
+            
+            // 이벤트 리스너 추가
+            quickSearchDiv.querySelectorAll('.quick-btn.suggestion').forEach((btn, idx) => {
+                btn.onclick = () => selectSuggestion(results[idx]);
+            });
+        }
+
+        // 검색 결과 선택 - 팝업으로 표시
+        function selectSuggestion(item) {
+            document.getElementById('suggestions').style.display = 'none';
+            showModal(item);
+        }
+
+        // 팝업 모달 열기
+        function showModal(item) {
+            const modal = document.getElementById('modal');
+            const overlay = document.getElementById('modalOverlay');
+            const modalBody = document.getElementById('modalBody');
+            
+            const floorInfo = item.floor_numbers ? `${item.floor_numbers}층` : '안내데스크 문의';
+            const floorNum = item.floor_numbers || '?';
+            
+            modalBody.innerHTML = `
+                <div class="direction-card">
+                    <div class="direction-arrow">⬆️</div>
+                    <div class="direction-floor">${floorNum}층</div>
+                    <div class="direction-dept">${item.dept_name}</div>
+                </div>
+                
+                <div class="modal-info-grid">
+                    <div class="modal-info-item">
+                        <div class="modal-info-label">📋 업무명</div>
+                        <div class="modal-info-value">${item.service_name}</div>
+                    </div>
+                    <div class="modal-info-item">
+                        <div class="modal-info-label">🏢 담당부서</div>
+                        <div class="modal-info-value">${item.dept_name} (${item.court_affiliation})</div>
+                    </div>
+                    <div class="modal-info-item">
+                        <div class="modal-info-label">⏱️ 처리시간</div>
+                        <div class="modal-info-value">${item.processing_time || '문의 필요'}</div>
+                    </div>
+                    <div class="modal-info-item">
+                        <div class="modal-info-label">📄 필요서류</div>
+                        <div class="modal-info-value">${item.required_documents || '문의 필요'}</div>
+                    </div>
+                    <div class="modal-info-item">
+                        <div class="modal-info-label">💰 수수료</div>
+                        <div class="modal-info-value">${item.service_fee || '문의 필요'}</div>
+                    </div>
+                    <div class="modal-info-item">
+                        <div class="modal-info-label">📂 분류</div>
+                        <div class="modal-info-value">${item.category_name}</div>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="modal-btn modal-btn-secondary" onclick="closeModal()">닫기</button>
+                    <button class="modal-btn modal-btn-primary" onclick="printDirection()">인쇄하기</button>
+                </div>
+            `;
+            
+            overlay.style.display = 'block';
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        // 팝업 모달 닫기
+        function closeModal() {
+            const modal = document.getElementById('modal');
+            const overlay = document.getElementById('modalOverlay');
+            
+            overlay.style.display = 'none';
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        // 인쇄 기능
+        function printDirection() {
+            window.print();
+        }
+
+        // 빠른 검색
+        function quickSearch(keyword) {
+            const searchInput = document.getElementById('searchInput');
+            searchInput.value = keyword;
+            
+            // 어셈블러 초기화
+            assembler.clear();
+            
+            // 검색 실행
+            const results = searchData(keyword);
+            showSuggestions(results);
+            
+            
+            // 검색 결과가 1개면 자동으로 표시
+            if (results.length === 1) {
+                setTimeout(() => showModal(results[0]), 300);
+            }
+        }
+
+        // 키보드 이벤트
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchInput = document.getElementById('searchInput');
+            let isVirtualKeyboard = false;
+
+            // 실제 키보드 입력
+            searchInput.addEventListener('input', (e) => {
+                // 가상 키보드 사용 중이면 무시
+                if (isVirtualKeyboard) {
+                    isVirtualKeyboard = false;
+                    return;
+                }
+                
+                const keyword = e.target.value;
+                console.log(`실제 키보드 입력: "${keyword}"`);
+                
+                // 어셈블러 동기화
+                assembler.clear();
+                
+                // 실시간 검색
+                const results = searchData(keyword);
+                showSuggestions(results);
+            });
+
+            // 검색창 포커스 시 현재 값으로 검색
+            searchInput.addEventListener('focus', (e) => {
+                const keyword = e.target.value;
+                if (keyword) {
+                    const results = searchData(keyword);
+                    showSuggestions(results);
+                }
+            });
+
+            // 가상 키보드 클릭
+            document.querySelectorAll('.key').forEach(key => {
+                key.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    isVirtualKeyboard = true;
+                    
+                    const char = key.dataset.key;
+                    console.log(`가상키보드 클릭: "${char}"`);
+                    
+                    if (char === 'backspace') {
+                        assembler.backspace();
+                    } else if (char === 'clear') {
+                        assembler.clear();
+                    } else {
+                        assembler.addChar(char);
+                    }
+                    
+                    const assembled = assembler.toString();
+                    searchInput.value = assembled;
+                    
+                    console.log(`조합 결과: "${assembled}"`);
+                    
+                    // 실시간 검색
+                    const results = searchData(assembled);
+                    console.log(`검색 결과 개수: ${results.length}`);
+                    showSuggestions(results);
+                    
+                    // input 이벤트를 수동으로 발생시키지 않음
+                    searchInput.focus();
+                });
+            });
+
+            // 외부 클릭시 기본 추천으로 복원
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.search-section')) {
+                    const quickSearchDiv = document.getElementById('quickSearch');
+                    quickSearchDiv.innerHTML = `
+                        <button class="quick-btn" onclick="quickSearch('등기')">등기</button>
+                        <button class="quick-btn" onclick="quickSearch('가사')">가사</button>
+                        <button class="quick-btn" onclick="quickSearch('민원')">민원</button>
+                        <button class="quick-btn" onclick="quickSearch('상담')">상담</button>
+                        <button class="quick-btn" onclick="quickSearch('조정')">조정</button>
+                    `;
+                }
+            });
+            
+            // ESC 키로 모달 닫기
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeModal();
+                }
+            });
+        });
+
+        // 초기화
+        initDb();
+    </script>
+</body>
+</html>

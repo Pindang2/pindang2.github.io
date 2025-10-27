@@ -28,10 +28,14 @@
                 color: "blue"
             },
             {
-                title: "대구가정법원용 디스플레이 프로젝트",
-                description: "출구 안내 디스플레이입니다.",
-                link: "/dgfamily/teguchi.html",
-                color: "green"
+                title: "대구가정법원 프로젝트",
+                description: "대구가정법원 관련 프로젝트 모음입니다.",
+                color: "green",
+                subProjects: [
+                    { name: "출구 안내 디스플레이", description: "출구 안내 디스플레이입니다.", link: "/dgfamily/teguchi.html" },
+                    { name: "청사업무안내 (방문자용)", description: "대구가정법원/대구서부지원 방문자 안내판용 프로그램.", link: "/dgfamily/info/visitor/index.html" },
+                    { name: "청사업무조회 (직원용)", description: "대구가정법원/대구서부지원 방문자를 응대하는 직원용 업무조회 프로그램.", link: "/dgfamily/info/employee/index.html" }
+                ]
             }
             // Add more projects here in the future
         ];
@@ -39,12 +43,26 @@
         const projectsGrid = document.getElementById('projects-grid');
 
         projects.forEach(project => {
+            let contentHtml = '';
+            if (project.subProjects) {
+                contentHtml = project.subProjects.map(sub => `
+                    <div class="flex items-center mb-3">
+                        <a href="${sub.link}" class="flex-shrink-0 bg-${project.color}-500 hover:bg-${project.color}-600 text-white font-bold py-2 px-4 rounded text-center" style="min-width: 180px;">${sub.name}</a>
+                        <p class="text-gray-600 ml-4">${sub.description}</p>
+                    </div>
+                `).join('');
+            } else {
+                contentHtml = `<a href="${project.link}" class="inline-block bg-${project.color}-500 hover:bg-${project.color}-600 text-white font-bold py-2 px-4 rounded">View Project</a>`;
+            }
+
             const projectCard = `
                 <div class="bg-white rounded-lg shadow-lg overflow-hidden">
                     <div class="p-6">
                         <h2 class="text-2xl font-bold text-gray-800 mb-2">${project.title}</h2>
                         <p class="text-gray-600 mb-4">${project.description}</p>
-                        <a href="${project.link}" class="inline-block bg-${project.color}-500 hover:bg-${project.color}-600 text-white font-bold py-2 px-4 rounded">View Project</a>
+                        <div class="mt-4">
+                            ${contentHtml}
+                        </div>
                     </div>
                 </div>
             `;

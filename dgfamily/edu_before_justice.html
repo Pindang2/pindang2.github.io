@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>25호 소년재판 전 교육실</title>
+    <style>
+        /* 1. 기본 및 레이아웃 설정 */
+        html, body {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* 스크롤바 숨기기 */
+            background-color: #000; /* 어두운 배경 */
+            color: #fff; /* 밝은 글씨 */
+            font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
+            
+            /* 사용자가 텍스트를 드래그(선택)할 수 없도록 설정 */
+            user-select: none; 
+            cursor: pointer; /* 클릭 가능함을 암시 (전체화면 기능) */
+        }
+
+        body {
+            display: flex;
+            flex-direction: column; /* 컨텐츠를 세로로 배치 */
+        }
+
+        /* 2. 중앙 컨텐츠 (제목) */
+        .main-content {
+            flex-grow: 1; /* 남은 공간을 모두 차지 (푸터를 제외한 나머지) */
+            display: flex;
+            flex-direction: column;
+            justify-content: center; /* 세로 중앙 정렬 */
+            align-items: center; /* 가로 중앙 정렬 */
+            text-align: center;
+        }
+
+        .main-title {
+            font-size: 30vw; /* 화면 너비에 비례한 '아주 큰' 글씨 */
+            font-weight: 900;
+            margin: 0;
+            line-height: 1; /* 줄간격 조절 */
+        }
+
+        .sub-title {
+            font-size: 7vw; /* '중간 크기' 글씨 */
+            font-weight: 400;
+            margin-top: 1.5rem; /* 위 제목과의 간격 */
+        }
+
+        /* 3. 하단 무한 스크롤 (Marquee) */
+        .footer-marquee {
+            width: 100%;
+            background-color: #1a1a1a; /* 푸터 배경색 */
+            overflow: hidden; /* 중요: 넘치는 텍스트 숨기기 */
+            white-space: nowrap; /* 중요: 텍스트가 줄바꿈되지 않도록 */
+            padding: 1rem 0;
+            box-sizing: border-box;
+        }
+
+        .marquee-content {
+            display: inline-block; /* 텍스트가 한 줄로 이어지도록 */
+            font-size: 2.5rem; /* 화살표 크기 */
+            font-weight: bold;
+            color: #FFFF00; /* 노란색 화살표 */
+            
+            /* 애니메이션 설정 */
+            animation: scroll-left 30s linear infinite;
+        }
+
+        /* 스크롤 애니메이션 정의 */
+        @keyframes scroll-left {
+            0% {
+                transform: translateX(0);
+            }
+            100% {
+                /* 텍스트의 1개 유닛만큼 왼쪽으로 이동 후 리셋 */
+                transform: translateX(-50%); 
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-content">
+        <h1 class="main-title">25호</h1>
+        <h2 class="sub-title">소년재판 전 교육실</h2>
+    </div>
+
+    <div class="footer-marquee">
+        <div class="marquee-content">
+            <span>◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀</span>
+            <span>◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀◀</span>
+        </div>
+    </div>
+
+    <script>
+        // --- JavaScript 기능 ---
+
+        // 1. 화면 꺼짐 방지 (Wakelock)
+        (async function() {
+            if ('wakeLock' in navigator) {
+                let wakeLock = null;
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Wakelock이 활성화되었습니다.');
+
+                    // 탭이 다시 활성화될 때 Wakelock을 재요청
+                    document.addEventListener('visibilitychange', async () => {
+                        if (wakeLock !== null && document.visibilityState === 'visible') {
+                            try {
+                                wakeLock = await navigator.wakeLock.request('screen');
+                                console.log('Wakelock이 다시 활성화되었습니다.');
+                            } catch (e) {
+                                console.error('Wakelock 재활성화 실패:', e);
+                            }
+                        }
+                    });
+
+                } catch (err) {
+                    console.error('Wakelock을 활성화할 수 없습니다:', err.name, err.message);
+                    console.warn('참고: Wakelock 기능은 HTTPS 또는 localhost 환경에서만 작동합니다.');
+                }
+            } else {
+                console.warn('이 브라우저는 Wakelock API를 지원하지 않습니다.');
+            }
+        })();
+
+        // 2. 더블 탭(클릭)으로 전체화면 전환
+        function toggleFullScreen() {
+            if (!document.fullscreenElement &&
+                !document.mozFullScreenElement && 
+                !document.webkitFullscreenElement && 
+                !document.msFullscreenElement) {
+                
+                // 전체화면 요청 (브라우저 호환성)
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen();
+                } else if (document.documentElement.msRequestFullscreen) {
+                    document.documentElement.msRequestFullscreen();
+                } else if (document.documentElement.mozRequestFullScreen) {
+                    document.documentElement.mozRequestFullScreen();
+                } else if (document.documentElement.webkitRequestFullscreen) {
+                    document.documentElement.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+                }
+            } else {
+                // 전체화면 해제 (브라우저 호환성)
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
+            }
+        }
+
+        // body(화면 전체)에 더블클릭 이벤트 연결
+        document.body.addEventListener('dblclick', toggleFullScreen);
+    </script>
+
+</body>
+</html>
