@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>대구법원청사 통합검색</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+            padding-bottom: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header h1 {
+            font-size: 1.3em;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            font-size: 0.85em;
+            opacity: 0.9;
+        }
+        
+        .search-container {
+            padding: 15px;
+            background: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .search-box {
+            position: relative;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 15px 50px 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 1em;
+            transition: all 0.3s;
+            background: #f8f9fa;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: #3498db;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        
+        .search-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.5em;
+            color: #7f8c8d;
+            pointer-events: none;
+        }
+        
+        .clear-btn {
+            position: absolute;
+            right: 50px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #95a5a6;
+            color: white;
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            font-size: 0.9em;
+            cursor: pointer;
+            display: none;
+        }
+        
+        .clear-btn.show {
+            display: block;
+        }
+        
+        .quick-filters {
+            display: flex;
+            gap: 8px;
+            padding: 10px 15px;
+            overflow-x: auto;
+            white-space: nowrap;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .quick-filters::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .filter-chip {
+            padding: 8px 16px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+            color: #555;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex-shrink: 0;
+        }
+        
+        .filter-chip.active {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+        
+        .content {
+            padding: 15px;
+        }
+        
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .section-title {
+            font-size: 1.1em;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+        
+        .section-count {
+            background: #3498db;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        
+        .result-item {
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .result-item:active {
+            transform: scale(0.98);
+            background: #e9ecef;
+        }
+        
+        .result-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .result-name {
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 5px;
+            font-size: 1em;
+        }
+        
+        .result-detail {
+            font-size: 0.85em;
+            color: #7f8c8d;
+            line-height: 1.5;
+        }
+        
+        .result-location {
+            display: inline-flex;
+            align-items: center;
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin-top: 6px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #7f8c8d;
+        }
+        
+        .empty-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+            opacity: 0.3;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px 20px;
+            color: #3498db;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f0f0f0;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-msg {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px;
+            border-left: 4px solid #c33;
+            font-size: 0.9em;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-card.blue {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+        }
+        
+        .stat-card.green {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+        }
+        
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+        
+        .stat-label {
+            font-size: 0.8em;
+            opacity: 0.95;
+        }
+        
+        /* 모달 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            animation: fadeIn 0.3s;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: 20px 20px 0 0;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 1001;
+            animation: slideUp 0.3s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 20px 20px 0 0;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .modal-close {
+            float: right;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-size: 1.5em;
+            cursor: pointer;
+        }
+        
+        .modal-title {
+            font-size: 1.3em;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .modal-subtitle {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .info-group {
+            margin-bottom: 15px;
+        }
+        
+        .info-label {
+            font-size: 0.85em;
+            font-weight: 700;
+            color: #764ba2;
+            margin-bottom: 5px;
+        }
+        
+        .info-value {
+            font-size: 0.95em;
+            color: #333;
+            line-height: 1.6;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .location-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+</head>
+<body>
+    <div class="header">
+        <h1>🏛️ 대구법원청사 통합검색</h1>
+        <p>부서와 업무를 빠르게 찾아보세요</p>
+    </div>
+
+    <div class="search-container">
+        <div class="search-box">
+            <input type="text" class="search-input" id="searchInput" placeholder="검색어를 입력하세요..." autocomplete="off">
+            <button class="clear-btn" id="clearBtn" onclick="clearSearch()">×</button>
+            <div class="search-icon">🔍</div>
+        </div>
+    </div>
+
+    <div class="quick-filters" id="quickFilters">
+        <div class="filter-chip active" data-filter="all">전체</div>
+        <div class="filter-chip" data-filter="dept">부서만</div>
+        <div class="filter-chip" data-filter="service">업무만</div>
+    </div>
+
+    <div id="loading" class="loading">
+        <div class="loading-spinner"></div>
+        <div>데이터베이스 로드 중...</div>
+    </div>
+
+    <div id="error" style="display: none;"></div>
+
+    <div class="content" id="content" style="display: none;">
+        <div class="stats" id="stats">
+            <div class="stat-card blue">
+                <div class="stat-value" id="deptCount">0</div>
+                <div class="stat-label">부서</div>
+            </div>
+            <div class="stat-card green">
+                <div class="stat-value" id="serviceCount">0</div>
+                <div class="stat-label">업무</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="floorCount">0</div>
+                <div class="stat-label">층</div>
+            </div>
+        </div>
+
+        <div id="results">
+            <div class="empty-state">
+                <div class="empty-icon">🔍</div>
+                <p>검색어를 입력하면<br>결과가 표시됩니다</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모달 -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal()"></div>
+    <div class="modal" id="modal">
+        <div class="modal-header">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <div class="modal-title" id="modalTitle"></div>
+            <div class="modal-subtitle" id="modalSubtitle"></div>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+    </div>
+
+    <script src="../database_v2/court-database-handler.js"></script>
+    <script>
+        let courtDB = null;
+        let allData = { departments: [], services: [], floors: [] };
+        let currentFilter = 'all';
+
+        // 한글 초성 추출 함수
+        const CHO_HANGUL = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+        
+        function getChosung(str) {
+            let result = '';
+            for (let i = 0; i < str.length; i++) {
+                const code = str.charCodeAt(i) - 0xAC00;
+                if (code > -1 && code < 11172) {
+                    result += CHO_HANGUL[Math.floor(code / 588)];
+                } else {
+                    result += str.charAt(i);
+                }
+            }
+            return result;
+        }
+        
+        // 자음 매칭 함수
+        function matchChosung(target, search) {
+            // 일반 검색 (포함)
+            if (target.toLowerCase().includes(search.toLowerCase())) {
+                return true;
+            }
+            
+            // 초성 검색
+            const targetChosung = getChosung(target);
+            const searchChosung = getChosung(search);
+            
+            // 연속된 초성 매칭
+            if (targetChosung.includes(searchChosung)) {
+                return true;
+            }
+            
+            // 초성으로만 구성된 검색어인지 확인
+            const isChosungOnly = /^[ㄱ-ㅎ]+$/.test(search);
+            if (isChosungOnly && targetChosung.includes(search)) {
+                return true;
+            }
+            
+            return false;
+        }
+
+        // 데이터베이스 초기화
+        async function initDatabase() {
+            try {
+                courtDB = new CourtDatabaseHandler();
+                await courtDB.initialize('../database_v2/대구법원청사관리시스템_v2_4.db');
+                
+                // 데이터 로드
+                allData.departments = courtDB.getAllDepartments();
+                allData.floors = courtDB.getAllFloors();
+                
+                // 모든 업무 로드
+                allData.services = [];
+                allData.departments.forEach(dept => {
+                    const services = courtDB.getServicesByDepartment(dept.dept_id);
+                    services.forEach(service => {
+                        allData.services.push({
+                            ...service,
+                            dept_name: dept.dept_name,
+                            dept_detail: dept.dept_detail,
+                            floor_numbers: dept.floor_numbers,
+                            room_numbers: dept.room_numbers,
+                            court_affiliation: dept.court_affiliation
+                        });
+                    });
+                });
+                
+                // 통계 업데이트
+                document.getElementById('deptCount').textContent = allData.departments.length;
+                document.getElementById('serviceCount').textContent = allData.services.length;
+                document.getElementById('floorCount').textContent = allData.floors.length;
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+                
+                console.log('✅ 초기화 완료');
+                
+            } catch (err) {
+                document.getElementById('loading').style.display = 'none';
+                const errorDiv = document.getElementById('error');
+                errorDiv.innerHTML = `<div class="error-msg"><strong>오류:</strong> ${err.message}</div>`;
+                errorDiv.style.display = 'block';
+                console.error(err);
+            }
+        }
+
+        // 검색 입력 이벤트
+        const searchInput = document.getElementById('searchInput');
+        const clearBtn = document.getElementById('clearBtn');
+        
+        searchInput.addEventListener('input', (e) => {
+            const keyword = e.target.value.trim();
+            clearBtn.classList.toggle('show', keyword.length > 0);
+            performSearch(keyword);
+        });
+
+        // 검색 수행
+        function performSearch(keyword) {
+            const resultsDiv = document.getElementById('results');
+            
+            if (!keyword) {
+                resultsDiv.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🔍</div>
+                        <p>검색어를 입력하면<br>결과가 표시됩니다</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // 자음 검색 지원 - 수동 필터링
+            let deptResults = allData.departments.filter(dept => {
+                return matchChosung(dept.dept_name, keyword) ||
+                       (dept.dept_detail && matchChosung(dept.dept_detail, keyword)) ||
+                       (dept.room_numbers && matchChosung(dept.room_numbers, keyword));
+            });
+            
+            let serviceResults = allData.services.filter(service => {
+                return matchChosung(service.service_name, keyword) ||
+                       matchChosung(service.dept_name, keyword) ||
+                       (service.required_documents && matchChosung(service.required_documents, keyword));
+            });
+            
+            // 필터 적용
+            if (currentFilter === 'dept') {
+                serviceResults = [];
+            } else if (currentFilter === 'service') {
+                deptResults = [];
+            }
+            
+            const totalResults = deptResults.length + serviceResults.length;
+            
+            if (totalResults === 0) {
+                resultsDiv.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">😔</div>
+                        <p>"${keyword}"에 대한<br>검색 결과가 없습니다</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            
+            // 부서 결과
+            if (deptResults.length > 0) {
+                html += `
+                    <div class="section">
+                        <div class="section-header">
+                            <div class="section-title">🏢 부서</div>
+                            <div class="section-count">${deptResults.length}</div>
+                        </div>
+                        ${deptResults.map(dept => `
+                            <div class="result-item" onclick='showDeptDetail(${JSON.stringify(dept)})'>
+                                <div class="result-name">${dept.dept_name}</div>
+                                <div class="result-detail">${dept.dept_detail || '-'}</div>
+                                <div class="result-location">📍 ${dept.floor_numbers || '?'}층 ${dept.room_numbers || ''}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+            
+            // 업무 결과
+            if (serviceResults.length > 0) {
+                html += `
+                    <div class="section">
+                        <div class="section-header">
+                            <div class="section-title">📋 업무</div>
+                            <div class="section-count">${serviceResults.length}</div>
+                        </div>
+                        ${serviceResults.map(service => `
+                            <div class="result-item" onclick='showServiceDetail(${JSON.stringify(service)})'>
+                                <div class="result-name">${service.service_name}</div>
+                                <div class="result-detail">${service.dept_name}</div>
+                                <div class="result-location">📍 ${service.floor_numbers || '?'}층 ${service.room_numbers || ''}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        // 부서 상세 보기
+        function showDeptDetail(dept) {
+            const services = courtDB.getServicesByDepartment(dept.dept_id);
+            
+            document.getElementById('modalTitle').textContent = dept.dept_name;
+            document.getElementById('modalSubtitle').textContent = dept.court_affiliation;
+            
+            let html = `
+                <div class="location-badge">📍 ${dept.floor_numbers || '?'}층 ${dept.room_numbers || ''}</div>
+                
+                ${dept.dept_detail ? `
+                    <div class="info-group">
+                        <div class="info-label">📝 상세설명</div>
+                        <div class="info-value">${dept.dept_detail}</div>
+                    </div>
+                ` : ''}
+                
+                <div class="info-group">
+                    <div class="info-label">📋 담당 업무 (${services.length}개)</div>
+                    <div class="info-value">
+                        ${services.length > 0 ? 
+                            services.map(s => `• ${s.service_name}`).join('<br>') :
+                            '등록된 업무가 없습니다'
+                        }
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('modalBody').innerHTML = html;
+            openModal();
+        }
+
+        // 업무 상세 보기
+        function showServiceDetail(service) {
+            document.getElementById('modalTitle').textContent = service.service_name;
+            document.getElementById('modalSubtitle').textContent = service.dept_name;
+            
+            let html = `
+                <div class="location-badge">📍 ${service.floor_numbers || '?'}층 ${service.room_numbers || ''}</div>
+                
+                <div class="info-group">
+                    <div class="info-label">🏢 담당부서</div>
+                    <div class="info-value">${service.dept_name} (${service.court_affiliation})</div>
+                </div>
+                
+                ${service.required_documents ? `
+                    <div class="info-group">
+                        <div class="info-label">📄 필요서류</div>
+                        <div class="info-value">${service.required_documents}</div>
+                    </div>
+                ` : ''}
+                
+                ${service.processing_time ? `
+                    <div class="info-group">
+                        <div class="info-label">⏱️ 처리시간</div>
+                        <div class="info-value">${service.processing_time}</div>
+                    </div>
+                ` : ''}
+                
+                ${service.service_fee ? `
+                    <div class="info-group">
+                        <div class="info-label">💰 수수료</div>
+                        <div class="info-value">${service.service_fee}</div>
+                    </div>
+                ` : ''}
+            `;
+            
+            document.getElementById('modalBody').innerHTML = html;
+            openModal();
+        }
+
+        // 모달 열기
+        function openModal() {
+            document.getElementById('modalOverlay').style.display = 'block';
+            document.getElementById('modal').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        // 모달 닫기
+        function closeModal() {
+            document.getElementById('modalOverlay').style.display = 'none';
+            document.getElementById('modal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        // 검색 초기화
+        function clearSearch() {
+            searchInput.value = '';
+            clearBtn.classList.remove('show');
+            performSearch('');
+            searchInput.focus();
+        }
+
+        // 필터 변경
+        document.querySelectorAll('.filter-chip').forEach(chip => {
+            chip.addEventListener('click', function() {
+                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                currentFilter = this.dataset.filter;
+                performSearch(searchInput.value.trim());
+            });
+        });
+
+        // 초기화
+        initDatabase();
+    </script>
+</body>
+</html>

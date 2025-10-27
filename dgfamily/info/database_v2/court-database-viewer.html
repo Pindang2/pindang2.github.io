@@ -251,7 +251,7 @@
         async function init() {
             try {
                 courtDB = new CourtDatabaseHandler();
-                const success = await courtDB.initialize('대구법원청사관리시스템_v2.db');
+                const success = await courtDB.initialize('대구법원청사관리시스템_v2_4.db');
 
                 if (success) {
                     document.getElementById('loading').style.display = 'none';
