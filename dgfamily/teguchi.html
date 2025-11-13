@@ -26,13 +26,31 @@
                         position: absolute;
                         top: 50%;
                         left: 50%;
-                        transform: translate(-50%, -50%);
+                        transform: translate(-50%, 150%);
                         font-family: 'Pretendard', sans-serif;
-                        font-size: 22.5vw;
+                        font-size: 27vw;
                         /* 화면 너비에 따라 크기 조절 */
                         font-weight: 900;
                         color: #39ff14;
                         z-index: 10;
+                        opacity: 0;
+                        transition: transform 200ms ease-in-out, opacity 200ms ease-in-out;
+                }
+
+                /* 중앙 '자동문' 텍스트 스타일 */
+                .auto-door-sign {
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, 150%);
+                        font-family: 'Pretendard', sans-serif;
+                        font-size: 9vw;
+                        /* 화면 너비에 따라 크기 조절 */
+                        font-weight: 900;
+                        color: #39ff14;
+                        z-index: 10;
+                        opacity: 0;
+                        transition: transform 200ms ease-in-out, opacity 200ms ease-in-out;
                 }
 
                 /* 매트릭스 화살표 기둥 컨테이너 */
@@ -102,6 +120,9 @@
         <!-- 중앙 출구 텍스트 -->
         <div class="exit-sign">출구</div>
 
+        <!-- 중앙 자동문 텍스트 -->
+        <div class="auto-door-sign">자동문입니다<br>걸어나가세요</div>
+
         <!-- 왼쪽 화살표 기둥 -->
         <div class="matrix-column left">
                 <div class="arrow-stream" id="left-stream"></div>
@@ -136,7 +157,57 @@
                         goFullscreen();
                         // 화면 꺼짐 방지 기능 활성화
                         requestWakeLock();
+
+                        // 초기 '출구' 텍스트 애니메이션
+                        const exitSign = document.querySelector('.exit-sign');
+                        exitSign.style.transform = 'translate(-50%, -50%)';
+                        exitSign.style.opacity = '1';
+
+                        // 텍스트 번갈아 보이기 시작
+                        startTextToggle();
                 });
+
+                // 텍스트 토글 함수
+                function startTextToggle() {
+                        let isExitVisible = true;
+                        setInterval(() => {
+                                const exitSign = document.querySelector('.exit-sign');
+                                const autoDoorSign = document.querySelector('.auto-door-sign');
+                                if (isExitVisible) {
+                                        // 출구를 위로 날려보내고 자동문을 아래에서 위로 날아들게
+                                        exitSign.style.transform = 'translate(-50%, -150%)';
+                                        exitSign.style.opacity = '0';
+                                        autoDoorSign.style.transform = 'translate(-50%, -50%)';
+                                        autoDoorSign.style.opacity = '1';
+                                } else {
+                                        // 자동문을 위로 날려보내기 전에 출구를 아래로 초기화
+                                        exitSign.style.transition = 'none';
+                                        exitSign.style.transform = 'translate(-50%, 150%)';
+                                        exitSign.style.opacity = '0';
+                                        
+                                        // 다음 프레임에서 트랜지션 복원 후 아래에서 위로 날아들게
+                                        setTimeout(() => {
+                                                exitSign.style.transition = 'transform 200ms ease-in-out, opacity 200ms ease-in-out';
+                                                exitSign.style.transform = 'translate(-50%, -50%)';
+                                                exitSign.style.opacity = '1';
+                                        }, 50);
+                                        
+                                        // 자동문을 위로 날려보냄
+                                        autoDoorSign.style.transform = 'translate(-50%, -150%)';
+                                        autoDoorSign.style.opacity = '0';
+                                        
+                                        // 자동문을 아래로 초기화 (다음 등장 준비)
+                                        setTimeout(() => {
+                                                autoDoorSign.style.transition = 'none';
+                                                autoDoorSign.style.transform = 'translate(-50%, 150%)';
+                                                setTimeout(() => {
+                                                        autoDoorSign.style.transition = 'transform 200ms ease-in-out, opacity 200ms ease-in-out';
+                                                }, 50);
+                                        }, 1000);
+                                }
+                                isExitVisible = !isExitVisible;
+                        }, 3000);
+                }
 
                 // 전체화면 전환 함수
                 function goFullscreen() {
