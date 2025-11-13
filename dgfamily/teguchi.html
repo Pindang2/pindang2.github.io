@@ -219,17 +219,85 @@
                 }
 
                 // 전체화면 전환 함수
-                function goFullscreen() {
+                // 표준 Fullscreen API를 우선 시도하고, iOS Safari에서는 비디오 요소 기반의 대체 방법을 시도합니다.
+                let _iosFullscreenVideo = null;
+                async function goFullscreen() {
                         const elem = document.documentElement;
-                        if (document.fullscreenElement) return; // 이미 전체화면이면 실행 안함
+                        // 이미 전체화면이면 무시
+                        if (document.fullscreenElement || document.webkitFullscreenElement) return;
 
+                        // 표준 API 시도
                         if (elem.requestFullscreen) {
-                                elem.requestFullscreen().catch(err => console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`));
-                        } else if (elem.webkitRequestFullscreen) { /* Safari */
-                                elem.webkitRequestFullscreen();
-                        } else if (elem.msRequestFullscreen) { /* IE11 */
-                                elem.msRequestFullscreen();
+                                try {
+                                        await elem.requestFullscreen();
+                                        return;
+                                } catch (err) {
+                                        console.warn('requestFullscreen failed:', err);
+                                }
                         }
+
+                        // WebKit 전용 API 시도
+                        if (elem.webkitRequestFullscreen) {
+                                try {
+                                        elem.webkitRequestFullscreen();
+                                        return;
+                                } catch (err) {
+                                        console.warn('webkitRequestFullscreen failed:', err);
+                                }
+                        }
+
+                        // iOS Safari: 비디오 요소를 만들어 webkitEnterFullscreen 또는 requestFullscreen을 시도
+                        try {
+                                // 이미 만든 비디오가 있다면 재사용
+                                if (!_iosFullscreenVideo) {
+                                        const v = document.createElement('video');
+                                        v.setAttribute('playsinline', '');
+                                        v.setAttribute('webkit-playsinline', '');
+                                        v.muted = true; // 자동 재생 허용을 위해 muted
+                                        v.loop = true;
+                                        v.style.width = '1px';
+                                        v.style.height = '1px';
+                                        v.style.position = 'fixed';
+                                        v.style.left = '0';
+                                        v.style.top = '0';
+                                        v.style.opacity = '0';
+                                        v.style.pointerEvents = 'none';
+
+                                        // 짧은 무음 비디오(데이터 URI) — 매우 작고 재생 가능한 경우 전체화면 전환에 사용됩니다.
+                                        // 이 데이터 URI는 최소한의 MP4 헤더/무음 프레임으로 구성됩니다. (작업환경에 따라 호환성 차이 있음)
+                                        // 만약 호환성 문제가 생기면 사용자에게 브라우저 버튼 사용 안내가 필요합니다.
+                                        v.src = 'data:video/mp4;base64,AAAAHGZ0eXBtcDQyAAAAAG1wNDFtcDQxaXNvbQAAABRtZGF0AAAA';
+                                        document.body.appendChild(v);
+                                        _iosFullscreenVideo = v;
+                                }
+
+                                // iOS에서는 webkitEnterFullScreen (video 전용) 또는 requestFullscreen을 시도
+                                if (_iosFullscreenVideo.webkitEnterFullscreen) {
+                                        try {
+                                                _iosFullscreenVideo.play().catch(()=>{});
+                                                _iosFullscreenVideo.webkitEnterFullscreen();
+                                                return;
+                                        } catch (err) {
+                                                console.warn('webkitEnterFullscreen failed:', err);
+                                        }
+                                }
+
+                                // 비디오에 대해 표준 requestFullscreen 시도
+                                if (_iosFullscreenVideo.requestFullscreen) {
+                                        try {
+                                                await _iosFullscreenVideo.requestFullscreen();
+                                                await _iosFullscreenVideo.play().catch(()=>{});
+                                                return;
+                                        } catch (err) {
+                                                console.warn('video requestFullscreen failed:', err);
+                                        }
+                                }
+                        } catch (err) {
+                                console.warn('iOS video fullscreen workaround failed:', err);
+                        }
+
+                        // 모든 방법 실패시 로깅
+                        console.info('Fullscreen request not available on this browser or was blocked.');
                 }
 
                 // iPhone / iPad Safari 감지 및 플로팅 버튼 동작 추가
@@ -258,6 +326,17 @@
                         let wakelockSentinel = null;
                         let audioFallback = null; // short silent audio fallback
 
+                        // 버튼 시각적 상태 업데이트
+                        function setButtonDimmed(dimmed) {
+                                try {
+                                        if (dimmed) {
+                                                btn.style.opacity = '0.02';
+                                        } else {
+                                                btn.style.opacity = '1';
+                                        }
+                                } catch (e) { /* 안전하게 무시 */ }
+                        }
+
                         async function enableWakeLockAndFullscreen() {
                                 // 먼저 전체화면 시도
                                 try {
@@ -273,6 +352,17 @@
                                                 wakelockSentinel = await navigator.wakeLock.request('screen');
                                                 console.log('Wake Lock acquired (standard).');
                                                 btn.setAttribute('aria-pressed','true');
+                                                // Dim 버튼
+                                                setButtonDimmed(true);
+
+                                                // release 이벤트로 해제 시 동작 처리
+                                                if (wakelockSentinel && typeof wakelockSentinel.addEventListener === 'function') {
+                                                        wakelockSentinel.addEventListener('release', () => {
+                                                                console.log('Wake Lock released (sentinel).');
+                                                                btn.setAttribute('aria-pressed','false');
+                                                                setButtonDimmed(false);
+                                                        });
+                                                }
                                         } catch (err) {
                                                 console.warn('Wake Lock request failed:', err);
                                         }
@@ -285,6 +375,7 @@
                                                 if (audioFallback) {
                                                         console.log('Audio fallback playing to keep screen awake.');
                                                         btn.setAttribute('aria-pressed','true');
+                                                        setButtonDimmed(true);
                                                 }
                                         } catch (e) {
                                                 console.warn('Audio fallback failed:', e);
@@ -298,6 +389,8 @@
                                                         try {
                                                                 wakelockSentinel = await navigator.wakeLock.request('screen');
                                                                 console.log('Wake Lock re-acquired after visibilitychange.');
+                                                                btn.setAttribute('aria-pressed','true');
+                                                                setButtonDimmed(true);
                                                         } catch (err) {
                                                                 console.warn('Re-acquire failed:', err);
                                                         }
@@ -316,6 +409,7 @@
                                         wakelockSentinel = null;
                                 }
                                 btn.setAttribute('aria-pressed','false');
+                                setButtonDimmed(false);
                         }
 
                         // 버튼 클릭으로 토글
