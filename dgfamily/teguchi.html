@@ -123,6 +123,12 @@
         <!-- 중앙 자동문 텍스트 -->
         <div class="auto-door-sign">자동문입니다<br>걸어나가세요</div>
 
+        <!-- iOS Safari 전용: 화면 꺼짐 방지 및 전체화면 버튼 (초기에는 숨김) -->
+        <button id="ios-wakelock-btn" aria-pressed="false" title="화면 꺼짐 방지 및 전체화면"
+                style="position:fixed;right:16px;bottom:20px;z-index:9999;padding:12px 16px;border-radius:10px;border:none;background:#39ff14;color:#000;font-weight:700;display:none;box-shadow:0 6px 18px rgba(0,0,0,0.5);">
+                화면꺼짐방지 / 전체화면
+        </button>
+
         <!-- 왼쪽 화살표 기둥 -->
         <div class="matrix-column left">
                 <div class="arrow-stream" id="left-stream"></div>
@@ -165,6 +171,9 @@
 
                         // 텍스트 번갈아 보이기 시작
                         startTextToggle();
+
+                        // iOS Safari인지 검사하고, 맞다면 플로팅 버튼 보여주기
+                        setupIosSafariWakelockButton();
                 });
 
                 // 텍스트 토글 함수
@@ -220,6 +229,128 @@
                                 elem.webkitRequestFullscreen();
                         } else if (elem.msRequestFullscreen) { /* IE11 */
                                 elem.msRequestFullscreen();
+                        }
+                }
+
+                // iPhone / iPad Safari 감지 및 플로팅 버튼 동작 추가
+                function isIos() {
+                        return /iP(hone|od|ad)/.test(navigator.userAgent);
+                }
+
+                function isSafariOnIos() {
+                        const ua = navigator.userAgent;
+                        const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|OPiOS|EdgiOS/.test(ua);
+                        return isIos() && isSafari;
+                }
+
+                function setupIosSafariWakelockButton() {
+                        const btn = document.getElementById('ios-wakelock-btn');
+                        if (!btn) return;
+
+                        if (!isSafariOnIos()) {
+                                // iOS Safari가 아니면 버튼을 숨김
+                                btn.style.display = 'none';
+                                return;
+                        }
+
+                        btn.style.display = 'block';
+
+                        let wakelockSentinel = null;
+                        let audioFallback = null; // short silent audio fallback
+
+                        async function enableWakeLockAndFullscreen() {
+                                // 먼저 전체화면 시도
+                                try {
+                                        await goFullscreen();
+                                } catch (e) {
+                                        // 무시
+                                        console.warn('Fullscreen failed:', e);
+                                }
+
+                                // 표준 Wake Lock 시도
+                                if ('wakeLock' in navigator) {
+                                        try {
+                                                wakelockSentinel = await navigator.wakeLock.request('screen');
+                                                console.log('Wake Lock acquired (standard).');
+                                                btn.setAttribute('aria-pressed','true');
+                                        } catch (err) {
+                                                console.warn('Wake Lock request failed:', err);
+                                        }
+                                }
+
+                                // 표준 API가 없거나 실패한 경우, 사용자 제스쳐가 있는 상황에서 재생 가능한 오디오를 플레이해서 가능한 경우 화면 꺼짐을 막아본다.
+                                if (!wakelockSentinel) {
+                                        try {
+                                                audioFallback = createAndPlaySilentAudio();
+                                                if (audioFallback) {
+                                                        console.log('Audio fallback playing to keep screen awake.');
+                                                        btn.setAttribute('aria-pressed','true');
+                                                }
+                                        } catch (e) {
+                                                console.warn('Audio fallback failed:', e);
+                                        }
+                                }
+
+                                // 페이지 가시성 변경 시 wakelock이 해제될 수 있으니 재요청 로직
+                                document.addEventListener('visibilitychange', async () => {
+                                        if (document.visibilityState === 'visible') {
+                                                if ('wakeLock' in navigator && !wakelockSentinel) {
+                                                        try {
+                                                                wakelockSentinel = await navigator.wakeLock.request('screen');
+                                                                console.log('Wake Lock re-acquired after visibilitychange.');
+                                                        } catch (err) {
+                                                                console.warn('Re-acquire failed:', err);
+                                                        }
+                                                }
+                                        }
+                                });
+                        }
+
+                        function disableWakeLockAndFullscreen() {
+                                if (audioFallback) {
+                                        try { audioFallback.pause(); audioFallback.remove(); } catch (e) {}
+                                        audioFallback = null;
+                                }
+                                if (wakelockSentinel) {
+                                        try { wakelockSentinel.release(); } catch (e) {}
+                                        wakelockSentinel = null;
+                                }
+                                btn.setAttribute('aria-pressed','false');
+                        }
+
+                        // 버튼 클릭으로 토글
+                        btn.addEventListener('click', async () => {
+                                const pressed = btn.getAttribute('aria-pressed') === 'true';
+                                if (!pressed) {
+                                        await enableWakeLockAndFullscreen();
+                                        btn.textContent = '해제 (화면꺼짐방지 중)';
+                                } else {
+                                        disableWakeLockAndFullscreen();
+                                        btn.textContent = '화면꺼짐방지 / 전체화면';
+                                }
+                        });
+
+                        // 간단한 silent WAV 데이터 URI 생성 및 재생 시도
+                        function createAndPlaySilentAudio() {
+                                // 짧은 무음 WAV (약 0.1s) - 대부분의 브라우저에서 재생 허용
+                                const silentWav = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
+                                const a = document.createElement('audio');
+                                a.src = silentWav;
+                                a.loop = true;
+                                a.muted = false; // iOS는 muted 상태면 재생을 허용하지 않을 수 있음
+                                a.playsInline = true;
+                                a.style.display = 'none';
+                                document.body.appendChild(a);
+                                // 사용자 제스쳐(버튼 클릭)에서 호출되므로 play()가 허용될 가능성이 높음
+                                const p = a.play();
+                                if (p && p.then) {
+                                        p.then(() => {
+                                                // 재생 성공
+                                        }).catch(err => {
+                                                console.warn('Silent audio playback rejected:', err);
+                                        });
+                                }
+                                return a;
                         }
                 }
 
